@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Word-Battle MVP</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="top">
+        <h1>Word Battle</h1>
+        <div class="mode">
+          <label>Mode:</label>
+          <select id="modeSelect">
+            <option value="words" selected>Listen & Tap (Reading)</option>
+            <option value="math">Math Battle</option>
+          </select>
+        </div>
+      </header>
+
+      <main class="arena">
+        <section class="side">
+          <div class="card">
+            <div class="nameRow">
+              <div class="name" id="pName">Player</div>
+            </div>
+            <div class="bars">
+              <div class="bar">
+                <div class="barLabel">HP</div>
+                <div class="barOuter"><div class="barInner" id="pHpBar"></div></div>
+                <div class="barText" id="pHpText"></div>
+              </div>
+              <div class="bar">
+                <div class="barLabel">XP</div>
+                <div class="barOuter"><div class="barInner xp" id="pXpBar"></div></div>
+                <div class="barText" id="pXpText"></div>
+              </div>
+              <div class="mini" id="pShieldText"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="center">
+          <div class="promptCard">
+            <div class="promptTitle" id="promptTitle">Listen & Choose</div>
+            <div class="promptSub" id="promptSub">Tap the correct answer first.</div>
+
+            <div class="promptMain" id="promptMain">Press Start</div>
+
+            <div class="choices" id="choices"></div>
+
+            <div class="controls">
+              <button id="startBtn">Start Round</button>
+              <button id="speakBtn">🔊 Speak</button>
+            </div>
+
+            <div class="log" id="log"></div>
+          </div>
+
+          <div class="abilityBar">
+            <button class="ability" data-ability="basic">Basic (5)</button>
+            <button class="ability" data-ability="heavy">Heavy (10)</button>
+            <button class="ability" data-ability="shield">Shield (7)</button>
+            <button class="ability" data-ability="heal">Heal (10)</button>
+          </div>
+        </section>
+
+        <section class="side">
+          <div class="card">
+            <div class="nameRow">
+              <div class="name" id="bName">WordBot</div>
+            </div>
+            <div class="bars">
+              <div class="bar">
+                <div class="barLabel">HP</div>
+                <div class="barOuter"><div class="barInner bot" id="bHpBar"></div></div>
+                <div class="barText" id="bHpText"></div>
+              </div>
+              <div class="bar">
+                <div class="barLabel">XP</div>
+                <div class="barOuter"><div class="barInner xp bot" id="bXpBar"></div></div>
+                <div class="barText" id="bXpText"></div>
+              </div>
+              <div class="mini" id="bShieldText"></div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
