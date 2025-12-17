@@ -3,35 +3,90 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Word-Battle MVP</title>
+    <title>Word Battle</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <div class="wrap">
-      <header class="top">
-        <h1>Word Battle</h1>
-        <div class="mode">
-          <label>Mode:</label>
-          <select id="modeSelect">
-            <option value="words" selected>Listen & Tap (Reading)</option>
-            <option value="math">Math Battle</option>
-          </select>
+    <div class="app">
+      <!-- TOP BAR -->
+      <header class="topbar">
+        <div class="brand">
+          <div class="brandTitle">WORD BATTLE</div>
+          <div class="brandTag">Read fast. Fight hard. Win big.</div>
+        </div>
+
+        <div class="topRight">
+          <div class="pill">
+            <span class="pillLabel">Mode</span>
+            <select id="modeSelect">
+              <option value="words" selected>Listen & Tap (Reading)</option>
+              <option value="math">Math Battle</option>
+            </select>
+          </div>
+
+          <button class="ghostBtn" id="homeBtn">Home</button>
         </div>
       </header>
 
-      <main class="arena">
-        <section class="side">
-          <div class="card">
-            <div class="nameRow">
-              <div class="name" id="pName">Player</div>
+      <!-- HOME SCREEN -->
+      <main id="homeScreen" class="home">
+        <section class="profileCard">
+          <div class="avatarBig">🙂</div>
+          <div class="pInfo">
+            <div class="pName">Player</div>
+            <div class="pMeta">Lv. 1 • Rookie Reader</div>
+            <div class="pStats">
+              <div class="stat"><div class="statNum" id="statWins">0</div><div class="statLbl">Wins</div></div>
+              <div class="stat"><div class="statNum" id="statWords">0</div><div class="statLbl">Words</div></div>
+              <div class="stat"><div class="statNum" id="statCoins">0</div><div class="statLbl">Coins</div></div>
+              <div class="stat"><div class="statNum" id="statGems">0</div><div class="statLbl">Gems</div></div>
             </div>
-            <div class="bars">
-              <div class="bar">
+          </div>
+        </section>
+
+        <section class="menuGrid">
+          <button class="menuTile battle" id="goBattle">
+            <div class="tileTitle">BATTLE!</div>
+            <div class="tileSub">Find an opponent (bot for now)</div>
+          </button>
+
+          <button class="menuTile loadout" id="goLoadout">
+            <div class="tileTitle">LOADOUT</div>
+            <div class="tileSub">Customize abilities</div>
+          </button>
+
+          <button class="menuTile shop" id="goShop">
+            <div class="tileTitle">SHOP</div>
+            <div class="tileSub">Skins, weapons, pets</div>
+          </button>
+
+          <button class="menuTile ranks" id="goRanks">
+            <div class="tileTitle">RANKS</div>
+            <div class="tileSub">Leaderboard</div>
+          </button>
+        </section>
+
+        <section class="miniNav">
+          <button class="miniBtn" id="goPractice">Practice</button>
+          <button class="miniBtn" id="goQuests">Quests</button>
+        </section>
+      </main>
+
+      <!-- BATTLE SCREEN -->
+      <main id="battleScreen" class="battle hidden">
+        <section class="hud">
+          <div class="fighterCard">
+            <div class="fighterTop">
+              <div class="fighterName" id="pName">Player</div>
+              <div class="fighterLvl">Lv 1</div>
+            </div>
+            <div class="barBlock">
+              <div class="barRow">
                 <div class="barLabel">HP</div>
-                <div class="barOuter"><div class="barInner" id="pHpBar"></div></div>
+                <div class="barOuter"><div class="barInner hp" id="pHpBar"></div></div>
                 <div class="barText" id="pHpText"></div>
               </div>
-              <div class="bar">
+              <div class="barRow">
                 <div class="barLabel">XP</div>
                 <div class="barOuter"><div class="barInner xp" id="pXpBar"></div></div>
                 <div class="barText" id="pXpText"></div>
@@ -39,45 +94,21 @@
               <div class="mini" id="pShieldText"></div>
             </div>
           </div>
-        </section>
 
-        <section class="center">
-          <div class="promptCard">
-            <div class="promptTitle" id="promptTitle">Listen & Choose</div>
-            <div class="promptSub" id="promptSub">Tap the correct answer first.</div>
+          <div class="vsPill">VS</div>
 
-            <div class="promptMain" id="promptMain">Press Start</div>
-
-            <div class="choices" id="choices"></div>
-
-            <div class="controls">
-              <button id="startBtn">Start Round</button>
-              <button id="speakBtn">🔊 Speak</button>
+          <div class="fighterCard right">
+            <div class="fighterTop">
+              <div class="fighterName" id="bName">WordBot</div>
+              <div class="fighterLvl">Lv 1</div>
             </div>
-
-            <div class="log" id="log"></div>
-          </div>
-
-          <div class="abilityBar">
-            <button class="ability" data-ability="basic">Basic (5)</button>
-            <button class="ability" data-ability="heavy">Heavy (10)</button>
-            <button class="ability" data-ability="shield">Shield (7)</button>
-            <button class="ability" data-ability="heal">Heal (10)</button>
-          </div>
-        </section>
-
-        <section class="side">
-          <div class="card">
-            <div class="nameRow">
-              <div class="name" id="bName">WordBot</div>
-            </div>
-            <div class="bars">
-              <div class="bar">
+            <div class="barBlock">
+              <div class="barRow">
                 <div class="barLabel">HP</div>
-                <div class="barOuter"><div class="barInner bot" id="bHpBar"></div></div>
+                <div class="barOuter"><div class="barInner hp bot" id="bHpBar"></div></div>
                 <div class="barText" id="bHpText"></div>
               </div>
-              <div class="bar">
+              <div class="barRow">
                 <div class="barLabel">XP</div>
                 <div class="barOuter"><div class="barInner xp bot" id="bXpBar"></div></div>
                 <div class="barText" id="bXpText"></div>
@@ -85,6 +116,33 @@
               <div class="mini" id="bShieldText"></div>
             </div>
           </div>
+        </section>
+
+        <section class="promptCard">
+          <div class="promptHeader">
+            <div>
+              <div class="promptTitle" id="promptTitle">Listen & Tap</div>
+              <div class="promptSub" id="promptSub">First correct answer wins the round.</div>
+            </div>
+            <div class="promptBtns">
+              <button id="startBtn" class="primaryBtn">Start Round</button>
+              <button id="speakBtn" class="ghostBtn">🔊 Speak</button>
+            </div>
+          </div>
+
+          <div class="promptMain" id="promptMain">Ready?</div>
+
+          <div class="choices" id="choices"></div>
+
+          <div class="toast" id="toast"></div>
+          <div class="log" id="log"></div>
+        </section>
+
+        <section class="abilityBar">
+          <button class="ability" data-ability="basic">Basic (5)</button>
+          <button class="ability" data-ability="heavy">Heavy (10)</button>
+          <button class="ability" data-ability="shield">Shield (7)</button>
+          <button class="ability" data-ability="heal">Heal (10)</button>
         </section>
       </main>
     </div>
