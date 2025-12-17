@@ -1,0 +1,33 @@
+[
+  { "id": "basic", "name": "Basic Attack", "xpCost": 5, "type": "attack", "value": 10 },
+  { "id": "heavy", "name": "Heavy Attack", "xpCost": 10, "type": "attack", "value": 18 },
+  { "id": "shield", "name": "Shield", "xpCost": 7, "type": "shield", "value": 12 },
+  { "id": "heal", "name": "Heal", "xpCost": 10, "type": "heal", "value": 16 },
+  { "id": "stun", "name": "Stun", "xpCost": 12, "type": "stun", "value": 1 },
+
+  {
+    "id": "summon_wall",
+    "name": "Summon Guardian",
+    "xpCost": 15,
+    "type": "summon",
+    "hp": 25,
+    "duration": "until_destroyed"
+  },
+
+  {
+    "id": "fullheal",
+    "name": "Full Heal",
+    "xpCost": 0,
+    "type": "fullheal",
+    "value": 30,
+    "limitPerMatch": 1
+  },
+
+  {
+    "id": "ultimate",
+    "name": "Ultimate",
+    "xpCost": 25,
+    "type": "attack",
+    "value": 35
+  }
+]
