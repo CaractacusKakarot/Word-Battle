@@ -1,27 +1,33 @@
-// app.js (repo root)
-// Wires UI (index.html) to engine (src/game/battleEngine.js) + data (data/*.json)
+// app.js
+// Word Battle MVP (Polished UI + Home screen + Reliable clicks)
+// Uses: ./src/game/battleEngine.js and JSON in /data
 
-import {
-  createFighter,
-  awardXP,
-  basicAttack,
-  heavyAttack,
-  heal as healAbility,
-  shield as shieldAbility,
-  resolveRound,
-  isDefeated,
-} from "./src/game/battleEngine.js";
+import { createInitialState, spendXpOnAbility, applyAbility } from "./src/game/battleEngine.js";
 
 const els = {
-  modeSelect: document.getElementById("modeSelect"),
-  startBtn: document.getElementById("startBtn"),
-  speakBtn: document.getElementById("speakBtn"),
-  promptTitle: document.getElementById("promptTitle"),
-  promptSub: document.getElementById("promptSub"),
-  promptMain: document.getElementById("promptMain"),
-  choices: document.getElementById("choices"),
-  log: document.getElementById("log"),
+  // screens
+  homeScreen: document.getElementById("homeScreen"),
+  battleScreen: document.getElementById("battleScreen"),
 
+  // top
+  modeSelect: document.getElementById("modeSelect"),
+  homeBtn: document.getElementById("homeBtn"),
+
+  // home buttons
+  goBattle: document.getElementById("goBattle"),
+  goLoadout: document.getElementById("goLoadout"),
+  goShop: document.getElementById("goShop"),
+  goRanks: document.getElementById("goRanks"),
+  goPractice: document.getElementById("goPractice"),
+  goQuests: document.getElementById("goQuests"),
+
+  // home stats
+  statWins: document.getElementById("statWins"),
+  statWords: document.getElementById("statWords"),
+  statCoins: document.getElementById("statCoins"),
+  statGems: document.getElementById("statGems"),
+
+  // battle HUD
   pHpBar: document.getElementById("pHpBar"),
   pHpText: document.getElementById("pHpText"),
   pXpBar: document.getElementById("pXpBar"),
@@ -33,61 +39,162 @@ const els = {
   bXpBar: document.getElementById("bXpBar"),
   bXpText: document.getElementById("bXpText"),
   bShieldText: document.getElementById("bShieldText"),
+
+  // battle prompt
+  promptTitle: document.getElementById("promptTitle"),
+  promptSub: document.getElementById("promptSub"),
+  promptMain: document.getElementById("promptMain"),
+  choices: document.getElementById("choices"),
+  startBtn: document.getElementById("startBtn"),
+  speakBtn: document.getElementById("speakBtn"),
+  toast: document.getElementById("toast"),
+  log: document.getElementById("log"),
+
+  // abilities
+  abilityButtons: Array.from(document.querySelectorAll(".ability")),
 };
 
-const state = {
-  player: createFighter("Player", false),
-  bot: createFighter("WordBot", true),
-  roundActive: false,
-  correctAnswer: null,
-  currentPromptToSpeak: null,
-  wordBank: null,
-  mathBank: null,
+// ------------------------
+// State
+// ------------------------
+
+let state = createInitialState();
+state.roundActive = false;
+state.correctAnswer = null;
+state.currentChoices = [];
+state.currentPrompt = "";
+
+// simple lifetime stats (local-only)
+let meta = {
+  wins: 0,
+  words: 0,
+  coins: 0,
+  gems: 0,
 };
 
-function setLog(msg) {
-  els.log.textContent = msg;
+// cached data
+let WORDS = [];
+let MATH = [];
+
+// ------------------------
+// UI helpers
+// ------------------------
+
+function showHome() {
+  els.homeScreen?.classList.remove("hidden");
+  els.battleScreen?.classList.add("hidden");
 }
 
-function pct(n, max) {
-  return `${Math.max(0, Math.min(100, Math.round((n / max) * 100)))}%`;
+function showBattle() {
+  els.homeScreen?.classList.add("hidden");
+  els.battleScreen?.classList.remove("hidden");
+}
+
+function setLog(msg) {
+  if (!els.log) return;
+  els.log.textContent = msg || "";
+}
+
+function setToast(msg, type) {
+  if (!els.toast) return;
+  els.toast.textContent = msg || "";
+  els.toast.className = "toast " + (type || "");
+}
+
+function clamp(n, min, max) {
+  return Math.max(min, Math.min(max, n));
+}
+
+function pct(current, max) {
+  if (!max) return 0;
+  return clamp((current / max) * 100, 0, 100);
+}
+
+// ------------------------
+// Data loading
+// ------------------------
+
+async function loadData() {
+  // NOTE: filenames must match exactly:
+  // /data/words_grade3.json and /data/math_grade3.json
+  const [wordsRes, mathRes] = await Promise.all([
+    fetch("./data/words_grade3.json"),
+    fetch("./data/math_grade3.json"),
+  ]);
+
+  if (!wordsRes.ok) throw new Error("Could not load ./data/words_grade3.json");
+  if (!mathRes.ok) throw new Error("Could not load ./data/math_grade3.json");
+
+  const wordsJson = await wordsRes.json();
+  const mathJson = await mathRes.json();
+
+  WORDS = Array.isArray(wordsJson?.words) ? wordsJson.words : [];
+  MATH = Array.isArray(mathJson?.problems) ? mathJson.problems : [];
+}
+
+// ------------------------
+// Rendering
+// ------------------------
+
+function renderHomeStats() {
+  if (els.statWins) els.statWins.textContent = String(meta.wins);
+  if (els.statWords) els.statWords.textContent = String(meta.words);
+  if (els.statCoins) els.statCoins.textContent = String(meta.coins);
+  if (els.statGems) els.statGems.textContent = String(meta.gems);
 }
 
 function renderBars() {
-  // HP
-  els.pHpBar.style.width = pct(state.player.hp, state.player.maxHp);
-  els.pHpText.textContent = `${state.player.hp} / ${state.player.maxHp}`;
-  els.bHpBar.style.width = pct(state.bot.hp, state.bot.maxHp);
-  els.bHpText.textContent = `${state.bot.hp} / ${state.bot.maxHp}`;
+  // Player
+  if (els.pHpBar) els.pHpBar.style.width = pct(state.player.hp, state.player.maxHp) + "%";
+  if (els.pHpText) els.pHpText.textContent = `${state.player.hp} / ${state.player.maxHp}`;
+  if (els.pXpBar) els.pXpBar.style.width = pct(state.player.xp, state.player.maxXp) + "%";
+  if (els.pXpText) els.pXpText.textContent = `${state.player.xp} XP`;
+  if (els.pShieldText) els.pShieldText.textContent = state.player.shield > 0 ? `Shield: ${state.player.shield}` : "";
 
-  // XP (battle XP - show up to 30 for now)
-  els.pXpBar.style.width = pct(state.player.battleXP, 30);
-  els.pXpText.textContent = `${state.player.battleXP} XP`;
-  els.bXpBar.style.width = pct(state.bot.battleXP, 30);
-  els.bXpText.textContent = `${state.bot.battleXP} XP`;
-
-  // Shields
-  els.pShieldText.textContent = state.player.shield > 0 ? `Shield: ${state.player.shield}` : "";
-  els.bShieldText.textContent = state.bot.shield > 0 ? `Shield: ${state.bot.shield}` : "";
+  // Bot
+  if (els.bHpBar) els.bHpBar.style.width = pct(state.bot.hp, state.bot.maxHp) + "%";
+  if (els.bHpText) els.bHpText.textContent = `${state.bot.hp} / ${state.bot.maxHp}`;
+  if (els.bXpBar) els.bXpBar.style.width = pct(state.bot.xp, state.bot.maxXp) + "%";
+  if (els.bXpText) els.bXpText.textContent = `${state.bot.xp} XP`;
+  if (els.bShieldText) els.bShieldText.textContent = state.bot.shield > 0 ? `Shield: ${state.bot.shield}` : "";
 }
 
-function resetRoundUI() {
+function renderChoices() {
+  if (!els.choices) return;
   els.choices.innerHTML = "";
-  els.promptMain.textContent = "Press Start";
-  state.correctAnswer = null;
-  state.currentPromptToSpeak = null;
-  state.roundActive = false;
+
+  state.currentChoices.forEach((c) => {
+    const btn = document.createElement("button");
+    btn.className = "choice";
+    btn.textContent = c;
+    btn.addEventListener("click", () => onPlayerChoice(btn, c));
+    els.choices.appendChild(btn);
+  });
 }
 
-function speak(text) {
-  if (!text) return;
-  const u = new SpeechSynthesisUtterance(text);
-  u.rate = 0.95;
-  window.speechSynthesis.cancel();
-  window.speechSynthesis.speak(u);
+function renderPrompt() {
+  if (!els.promptMain) return;
+  els.promptMain.textContent = state.currentPrompt || "Ready?";
 }
 
-function pickRandom(arr) {
+function setModeText() {
+  const mode = els.modeSelect?.value || "words";
+  if (!els.promptTitle || !els.promptSub) return;
+
+  if (mode === "math") {
+    els.promptTitle.textContent = "Math Battle";
+    els.promptSub.textContent = "First correct answer wins the round.";
+  } else {
+    els.promptTitle.textContent = "Listen & Tap";
+    els.promptSub.textContent = "First correct answer wins the round.";
+  }
+}
+
+// ------------------------
+// Game loop
+// ------------------------
+
+function randomPick(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
@@ -100,170 +207,234 @@ function shuffle(arr) {
   return a;
 }
 
-function makeChoices(correct, all) {
-  const wrongs = shuffle(all.filter(x => x !== correct)).slice(0, 3);
-  return shuffle([correct, ...wrongs]);
-}
+function generateRound() {
+  const mode = els.modeSelect?.value || "words";
 
-function makeMathRound(bank) {
-  // bank.items = [{ q: "7 + 8", a: "15" }, ...]
-  const item = pickRandom(bank.items);
-  const correct = item.a;
-  const allAnswers = bank.items.map(i => i.a);
-  const choices = makeChoices(correct, allAnswers);
-  return { prompt: item.q, correct, choices, speakText: item.q };
-}
+  if (mode === "math") {
+    const p = randomPick(MATH);
+    // p = { question, choices[], answer }
+    state.currentPrompt = p?.question || "Solve:";
+    state.correctAnswer = String(p?.answer ?? "");
+    state.currentChoices = Array.isArray(p?.choices) ? p.choices.map(String) : [];
+    // guarantee 4 choices
+    if (state.currentChoices.length < 4) {
+      const fill = ["1", "2", "3", "4", "5", "6"];
+      while (state.currentChoices.length < 4) state.currentChoices.push(randomPick(fill));
+      state.currentChoices = shuffle(state.currentChoices).slice(0, 4);
+    }
+  } else {
+    // words mode
+    const correct = randomPick(WORDS);
+    const pool = WORDS.filter((w) => w !== correct);
+    const wrongs = shuffle(pool).slice(0, 3);
+    const choices = shuffle([correct, ...wrongs]);
 
-function makeWordRound(bank) {
-  // bank.words = ["clinical", ...]
-  const correct = pickRandom(bank.words);
-  const choices = makeChoices(correct, bank.words);
-  // Listen & Tap: we SPEAK the correct word, and show 4 word choices
-  return { prompt: "Listen & Choose", correct, choices, speakText: correct };
-}
-
-async function loadData() {
-  // These must match your data file names
-  const [words, math] = await Promise.all([
-    fetch("./data/words_grade3.json").then(r => r.json()),
-    fetch("./data/math_grade3.json").then(r => r.json()),
-  ]);
-  state.wordBank = words;
-  state.mathBank = math;
-  setLog("Loaded Grade 3 content.");
-}
-
-function endIfGameOver() {
-  if (isDefeated(state.player)) {
-    setLog("You lost! Refresh to play again.");
-    els.startBtn.disabled = true;
-    state.roundActive = false;
-    return true;
+    state.currentPrompt = "Listen & Choose";
+    state.correctAnswer = correct;
+    state.currentChoices = choices;
   }
-  if (isDefeated(state.bot)) {
-    setLog("You won! Refresh to play again.");
-    els.startBtn.disabled = true;
-    state.roundActive = false;
-    return true;
-  }
-  return false;
+
+  renderPrompt();
+  renderChoices();
 }
 
-function botAttemptAnswer(correct) {
-  // Timer-based “AI”: reaction speed depends on mode + random jitter
-  // Faster = harder. For MVP, keep it moderate.
-  const base = els.modeSelect.value === "math" ? 950 : 850;
-  const jitter = Math.random() * 550; // 0–550ms
-  const willBeCorrect = Math.random() < 0.75; // bot accuracy
+// Make bot deliberately slower so your clicks always register
+function botAttemptAnswer() {
+  // slower for MVP
+  const base = (els.modeSelect?.value || "words") === "math" ? 1400 : 1200;
+  const jitter = Math.random() * 900; // 0–900ms
+  const willBeCorrect = Math.random() < 0.70;
   const delay = base + jitter;
 
   setTimeout(() => {
     if (!state.roundActive) return;
+    if (!willBeCorrect) return;
 
-    if (willBeCorrect) {
-      // Bot wins round
-      state.roundActive = false;
-      resolveRound(state.bot, state.player);
-      setLog("Bot was first! +3 XP for bot, you take 5 damage.");
-      renderBars();
-      endIfGameOver();
-    } else {
-      // Bot “misses” (does nothing). Player can still answer.
-    }
+    state.roundActive = false;
+    resolveRound(state.bot, state.player);
+    setToast("Bot was first!", "bad");
+    setLog("Bot was first: +3 XP bot, you take 5 damage.");
+    renderBars();
+    endIfGameOver();
   }, delay);
 }
 
-function onPlayerChoice(btn, value) {
-  if (!state.roundActive) return;
+function resolveRound(winner, loser) {
+  // simple MVP: winner gets 3 XP, loser takes 5 damage
+  winner.xp = clamp(winner.xp + 3, 0, winner.maxXp);
 
-  const correct = state.correctAnswer;
-
-  if (value === correct) {
-    state.roundActive = false;
-    btn.classList.add("correct");
-    resolveRound(state.player, state.bot);
-    setLog("You were first! +3 XP for you, bot takes 5 damage.");
-    renderBars();
-    endIfGameOver();
-  } else {
-    btn.classList.add("wrong");
-    setLog("Wrong! Keep trying fast.");
+  let dmg = 5;
+  // shield absorbs
+  if (loser.shield > 0) {
+    const absorbed = Math.min(loser.shield, dmg);
+    loser.shield -= absorbed;
+    dmg -= absorbed;
   }
+  loser.hp = clamp(loser.hp - dmg, 0, loser.maxHp);
 }
 
-function renderRound(round) {
-  els.promptTitle.textContent = els.modeSelect.value === "math" ? "Math Battle" : "Listen & Tap";
-  els.promptSub.textContent = "First correct answer wins the round and earns XP.";
-  els.promptMain.textContent = round.prompt;
-
-  state.correctAnswer = round.correct;
-  state.currentPromptToSpeak = round.speakText;
-
-  els.choices.innerHTML = "";
-  round.choices.forEach(choice => {
-    const b = document.createElement("button");
-    b.className = "choice";
-    b.textContent = choice;
-    b.addEventListener("click", () => onPlayerChoice(b, choice));
-    els.choices.appendChild(b);
-  });
-
-  // Auto-speak at start of round for reading mode
-  if (els.modeSelect.value === "words") {
-    speak(round.speakText);
+function endIfGameOver() {
+  if (state.player.hp <= 0) {
+    setToast("You lost the match.", "bad");
+    setLog("Defeat. Click Home to try again.");
+    state.roundActive = false;
+  }
+  if (state.bot.hp <= 0) {
+    meta.wins += 1;
+    meta.coins += 10; // tiny reward
+    renderHomeStats();
+    setToast("You won the match!", "good");
+    setLog("Victory! +10 coins. (MVP reward)");
+    state.roundActive = false;
   }
 }
 
 function startRound() {
-  if (!state.wordBank || !state.mathBank) {
-    setLog("Loading… try again in a moment.");
-    return;
-  }
-  if (endIfGameOver()) return;
-
+  // reset round UI feedback
+  setToast("", "");
+  setLog("");
   state.roundActive = true;
 
-  const round = els.modeSelect.value === "math"
-    ? makeMathRound(state.mathBank)
-    : makeWordRound(state.wordBank);
+  // build new prompt
+  generateRound();
 
-  renderRound(round);
-  botAttemptAnswer(round.correct);
+  // start bot timer
+  botAttemptAnswer();
 }
 
-function wireAbilities() {
-  document.querySelectorAll(".ability").forEach(btn => {
+function onPlayerChoice(btn, value) {
+  if (!state.roundActive) {
+    setToast("Round already ended. Start next round.", "bad");
+    return;
+  }
+
+  const correct = state.correctAnswer;
+
+  if (String(value) === String(correct)) {
+    state.roundActive = false;
+    btn.classList.add("correct");
+
+    // count "words solved" (for home stats)
+    if ((els.modeSelect?.value || "words") === "words") meta.words += 1;
+
+    resolveRound(state.player, state.bot);
+    setToast("You were first!", "good");
+    setLog("You were first: +3 XP you, bot takes 5 damage.");
+    renderBars();
+    renderHomeStats();
+    endIfGameOver();
+  } else {
+    btn.classList.add("wrong");
+    setToast("Wrong!", "bad");
+    setLog("Wrong answer. Try again fast.");
+  }
+}
+
+function speakCurrent() {
+  const mode = els.modeSelect?.value || "words";
+
+  try {
+    if (!("speechSynthesis" in window)) {
+      setToast("Speech not supported on this device.", "bad");
+      return;
+    }
+
+    let toSpeak = "";
+    if (mode === "math") {
+      toSpeak = state.currentPrompt || "Solve the problem";
+    } else {
+      // Speak the correct answer as the “word spoken”
+      toSpeak = state.correctAnswer || "Ready";
+    }
+
+    const u = new SpeechSynthesisUtterance(toSpeak);
+    u.rate = 1.0;
+    u.pitch = 1.0;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(u);
+  } catch (e) {
+    setToast("Could not use speech on this browser.", "bad");
+  }
+}
+
+function onAbilityClick(abilityKey) {
+  const costOk = spendXpOnAbility(state.player, abilityKey);
+  if (!costOk) {
+    setToast("Not enough XP for that ability.", "bad");
+    setLog("Earn XP by winning rounds.");
+    renderBars();
+    return;
+  }
+
+  applyAbility(state, "player", abilityKey);
+  setToast(`Used: ${abilityKey.toUpperCase()}`, "good");
+  setLog(`Ability used: ${abilityKey}`);
+  renderBars();
+}
+
+// ------------------------
+// Wire up events
+// ------------------------
+
+function wireEvents() {
+  els.startBtn?.addEventListener("click", startRound);
+  els.speakBtn?.addEventListener("click", speakCurrent);
+
+  els.modeSelect?.addEventListener("change", () => {
+    setModeText();
+    setToast("", "");
+    setLog("");
+    state.roundActive = false;
+    state.currentPrompt = "Ready?";
+    state.currentChoices = [];
+    state.correctAnswer = null;
+    renderPrompt();
+    if (els.choices) els.choices.innerHTML = "";
+  });
+
+  els.abilityButtons.forEach((btn) => {
     btn.addEventListener("click", () => {
-      const type = btn.dataset.ability;
-
-      let ok = false;
-      if (type === "basic") ok = basicAttack(state.player, state.bot);
-      if (type === "heavy") ok = heavyAttack(state.player, state.bot);
-      if (type === "shield") ok = shieldAbility(state.player);
-      if (type === "heal") ok = healAbility(state.player);
-
-      if (!ok) {
-        setLog("Not enough XP for that ability.");
-      } else {
-        setLog(`Used ${type}!`);
-      }
-
-      renderBars();
-      endIfGameOver();
+      const key = btn.getAttribute("data-ability");
+      if (key) onAbilityClick(key);
     });
   });
+
+  // navigation
+  els.homeBtn?.addEventListener("click", showHome);
+  els.goBattle?.addEventListener("click", () => {
+    showBattle();
+    setModeText();
+    renderBars();
+    setToast("", "");
+    setLog("Click Start Round to begin.");
+  });
+
+  // placeholders (for showstopper next steps)
+  els.goLoadout?.addEventListener("click", () => setToast("Loadout screen coming next.", ""));
+  els.goShop?.addEventListener("click", () => setToast("Shop screen coming next.", ""));
+  els.goRanks?.addEventListener("click", () => setToast("Leaderboard coming next.", ""));
+  els.goPractice?.addEventListener("click", () => setToast("Practice mode coming next.", ""));
+  els.goQuests?.addEventListener("click", () => setToast("Quests coming next.", ""));
 }
 
-// Buttons
-els.startBtn.addEventListener("click", startRound);
-els.speakBtn.addEventListener("click", () => speak(state.currentPromptToSpeak));
-els.modeSelect.addEventListener("change", () => {
-  resetRoundUI();
-  setLog("Mode changed. Press Start Round.");
-});
-
+// ------------------------
 // Init
-wireAbilities();
-renderBars();
-resetRoundUI();
-loadData();
+// ------------------------
+
+async function init() {
+  try {
+    await loadData();
+  } catch (e) {
+    console.error(e);
+    setToast("Could not load word/math data. Check filenames in /data.", "bad");
+    setLog(String(e?.message || e));
+  }
+
+  wireEvents();
+  setModeText();
+  renderBars();
+  renderHomeStats();
+  showHome();
+}
+
+init();
